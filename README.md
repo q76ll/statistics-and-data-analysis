@@ -21,17 +21,11 @@
 
 ```
 statistics-and-data-analysis/
-├── README.md            # 本文件
-├── .gitignore
-├── notes/               # 学习笔记（Markdown）
-│   ├── README.md
-│   └── 01-描述统计.md
-├── code/                # 代码与练习
-│   └── README.md
-├── data/                # 示例数据（小文件）
-│   └── README.md
-└── assignments/         # 作业与项目
-    └── README.md
+├── README.md        # 本文件
+├── notes/           # 课堂笔记（Markdown）
+├── code/            # 代码与练习（Python / Jupyter）
+├── data/            # 示例数据（小文件）
+└── assignments/     # 作业与项目
 ```
 
 ## 🧰 环境与工具
@@ -47,8 +41,7 @@ pip install numpy pandas matplotlib scipy seaborn jupyter
 ## ✅ 学习记录
 
 - [x] 创建公开仓库并完成首次推送
-- [x] 建立学习目录骨架（notes / code / data / assignments）
-- [ ] 第一周：描述统计基础 → 笔记：[notes/01-描述统计.md](./notes/01-描述统计.md)
+- [ ] 第一周：描述统计基础
 - [ ] 概率分布入门
 
 ---
