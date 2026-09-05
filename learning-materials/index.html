@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>概念学习资料索引 · concept-study</title>
+<style>
+* { box-sizing: border-box; }
+body { max-width: 820px; margin: 32px auto; padding: 0 24px; font: 16px/1.65 -apple-system, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif; color: #1f2328; background: #fff; }
+h1 { font-size: 1.9em; border-bottom: 2px solid #1f2328; padding-bottom: 8px; margin-bottom: 8px; }
+h2 { font-size: 1.35em; margin-top: 2em; padding-bottom: 4px; border-bottom: 1px solid #d0d7de; }
+p, li { color: #1f2328; }
+.meta { color: #57606a; font-size: 0.9em; margin: 6px 0 24px; }
+.meta span.tag { display: inline-block; background: #ddf4ff; color: #0969da; padding: 2px 10px; border-radius: 12px; font-size: 0.85em; margin-right: 4px; }
+.lede { font-size: 1.05em; background: #f6f8fa; padding: 14px 18px; border-left: 4px solid #0969da; border-radius: 4px; margin: 16px 0 24px; }
+code { background: #f6f8fa; padding: 2px 6px; border-radius: 4px; font-family: ui-monospace, Consolas, Menlo, monospace; font-size: 0.92em; }
+table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 0.95em; }
+th, td { border: 1px solid #d0d7de; padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: #f6f8fa; }
+a { color: #0969da; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.muted { color: #57606a; font-size: 0.9em; }
+hr { border: 0; border-top: 1px solid #d0d7de; margin: 32px 0; }
+.nav { color: #57606a; font-size: 0.9em; margin-bottom: 16px; }
+.nav a { color: #57606a; }
+</style>
+</head>
+<body>
+
+<p class="nav">[返回 README](../README.md)</p>
+
+<h1>概念学习资料索引</h1>
+<div class="meta">
+<span class="tag">index</span><span class="tag">concept-study</span>
+<br>由 <code>concept-study</code> Skill 维护 · 最后更新：2026-09-05
+</div>
+
+<div class="lede">
+本目录是项目级 Skill <code>concept-study</code> 的产出。每份资料按统一结构：个人理解 → 核心机制 → 应用场景 → 混淆与边界 → 自检问题 → 参考资料。遇到新的概念，让 <code>concept-study</code> 学习一下，就会追加到下面。
+</div>
+
+<h2>已生成的概念</h2>
+
+<table>
+<thead>
+<tr><th>#</th><th>概念</th><th>slug</th><th>一句话定义</th><th>标签</th><th>深度</th></tr>
+</thead>
+<tbody>
+<tr>
+<td>01</td>
+<td><a href="agent.html">Agent（智能体）</a></td>
+<td><code>agent</code></td>
+<td>LLM 驱动的、能自主循环地调用工具直到完成目标的程序</td>
+<td>AI · agent · autonomy · tool-use</td>
+<td>standard</td>
+</tr>
+<tr>
+<td>02</td>
+<td><a href="llm-context.html">大模型的上下文（Context Window）</a></td>
+<td><code>llm-context</code></td>
+<td>一次推理中模型能"看见"并据以生成下一段文本的全部输入，受 context window 限制</td>
+<td>LLM · context-window · prompt · attention</td>
+<td>standard</td>
+</tr>
+<tr>
+<td>03</td>
+<td><a href="skill.html">Skill（技能）</a></td>
+<td><code>skill</code></td>
+<td>一组预先写好的指令与资源，用于把通用 Agent 武装成某领域专家</td>
+<td>AI · skill · capability-extension · prompt-engineering</td>
+<td>standard</td>
+</tr>
+</tbody>
+</table>
+
+<h2>关系图</h2>
+<p><a href="concept-relationship.html">概念关系图 →</a>（含 Mermaid 流程图 + 文字版 fallback）</p>
+
+<h2>学习使用建议</h2>
+<ul>
+<li><strong>3 分钟过一遍</strong>：打开资料 → 读"Header"和"个人理解"→ 翻到末尾"参考资料"前 2 条。</li>
+<li><strong>10 分钟扎实学</strong>：关掉资料，口头回答"自检问题"里 1、3、5——能答上来就算过。</li>
+<li><strong>对比读</strong>：学完一个概念，把它的"混淆与边界"和它的概念笔记对照看——大多数理解卡点不是它本身，是它和邻居的边界。</li>
+</ul>
+
+<h2>如何新增一份概念</h2>
+<ol>
+<li>在 WorkBuddy 中输入：<code>用 concept-study 学习 &lt;概念名&gt;</code></li>
+<li>Skill 触发后，按 <code>.workbuddy/skills/concept-study/SKILL.md</code> 的生成步骤执行</li>
+<li>新增的 HTML 文件落到 <code>learning-materials/&lt;slug&gt;.html</code></li>
+<li>本 <code>index.html</code> 自动追加一行（由 Skill 在每次新增时一并更新）</li>
+</ol>
+
+<hr>
+
+<p class="muted">本目录文件清单：<code>index.html</code>、<code>agent.html</code>、<code>llm-context.html</code>、<code>skill.html</code>、<code>concept-relationship.html</code>。</p>
+
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大模型的上下文（Context / Context Window）— 个人学习笔记</title>
+<style>
+* { box-sizing: border-box; }
+body { max-width: 760px; margin: 32px auto; padding: 0 24px; font: 16px/1.65 -apple-system, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif; color: #1f2328; background: #fff; }
+h1 { font-size: 1.9em; border-bottom: 2px solid #1f2328; padding-bottom: 8px; margin-bottom: 8px; }
+h2 { font-size: 1.35em; margin-top: 2em; padding-bottom: 4px; border-bottom: 1px solid #d0d7de; }
+h3 { font-size: 1.1em; margin-top: 1.5em; color: #1f2328; }
+p, li { color: #1f2328; }
+.meta { color: #57606a; font-size: 0.9em; margin: 6px 0 24px; }
+.meta span.tag { display: inline-block; background: #ddf4ff; color: #0969da; padding: 2px 10px; border-radius: 12px; font-size: 0.85em; margin-right: 4px; }
+.lede { font-size: 1.05em; background: #f6f8fa; padding: 14px 18px; border-left: 4px solid #0969da; border-radius: 4px; margin: 16px 0 24px; }
+code { background: #f6f8fa; padding: 2px 6px; border-radius: 4px; font-family: ui-monospace, Consolas, Menlo, monospace; font-size: 0.92em; }
+pre { background: #f6f8fa; padding: 14px 16px; border-radius: 6px; overflow-x: auto; border: 1px solid #d0d7de; }
+pre code { background: transparent; padding: 0; font-size: 0.85em; line-height: 1.5; display: block; }
+blockquote { border-left: 4px solid #d0d7de; padding: 0 14px; color: #57606a; margin: 14px 0; }
+ul, ol { padding-left: 1.4em; }
+li { margin: 5px 0; }
+table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 0.95em; }
+th, td { border: 1px solid #d0d7de; padding: 8px 10px; text-align: left; }
+th { background: #f6f8fa; }
+a { color: #0969da; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.muted { color: #57606a; font-size: 0.9em; }
+hr { border: 0; border-top: 1px solid #d0d7de; margin: 32px 0; }
+.nav { color: #57606a; font-size: 0.9em; margin-bottom: 16px; }
+.nav a { color: #57606a; }
+</style>
+</head>
+<body>
+
+<p class="nav">[<a href="index.html">返回索引</a>] · [<a href="concept-relationship.html">概念关系图</a>]</p>
+
+<h1>大模型的上下文（Context Window）</h1>
+<div class="meta">
+<span class="tag">LLM</span><span class="tag">context-window</span><span class="tag">prompt</span><span class="tag">attention</span>
+<br>日期：2026-09-05 · 深度：standard · 受众：自我学习者
+</div>
+
+<div class="lede">
+大模型的"上下文（Context）" = 一次推理中，模型<strong>能看见并据以生成下一段文本</strong>的全部输入。它通常被切成 <strong>tokens</strong>，总长度受 <strong>context window</strong> 限制。它是模型的"短期舞台"，不是"长期记忆"。
+</div>
+
+<section id="personal-explanation">
+<h2>个人理解</h2>
+<p>我每次讲 LLM 上下文都忍不住要拽一句"舞台 vs 记忆"的类比——因为这是最容易混淆的事：</p>
+<p>把 LLM 想象成一个<strong>没有记忆的演员</strong>。每次TA 走上台前，灯光亮起的那一刻，导演（也就是调用方）要递给TA一张大纸，这张纸就是 context window。纸的容量是有限的（8k、32k、200k token 不等）。纸上的内容决定这次表演能演得多好——但<strong>TA 演完谢幕后，下一次再上台时完全不记得上次演过什么</strong>。</p>
+<p>所以"上下文"是个动词性概念：它指的是<em>本次推理的输入边界</em>，而不是某种持久存储。系统提示词、历史消息、工具返回、用户当前问题、检索召回的片段——所有这些加在一起，必须装进这个窗口。</p>
+<p>一旦你把这个框架立起来，很多"AI bug"立刻就有了解释：模型"忘了对话开头说过什么"是因为它本来就没记忆，是上下文塞不下；模型"前后矛盾"是因为不同 token 之间注意力被稀释，不是"AI 学坏了"。</p>
+</section>
+
+<section id="mechanics">
+<h2>核心机制</h2>
+<ul>
+<li><strong>按 token 计，不按字符计</strong>。1 token ≈ 0.75 个英文单词 ≈ 1.5 个汉字。模型最小感知单位是 token，不是字符也不是词。</li>
+<li><strong>有硬上界</strong>。当前主流模型 8k–200k token 不等；超出窗口会被截断或报错。</li>
+<li><strong>输入+输出都计费</strong>。输入便宜，输出贵（~5x），所以"让模型写长 prompt"和"让模型写短答案"是两个 trade-off。</li>
+<li><strong>注意力随距离稀释</strong>。长上下文中"迷失中间 (lost in the middle)"现象——窗口开得越大，每个 token 分到的注意力越稀，模型对中段细节的引用显著下降。</li>
+<li><strong>可被显式工程化</strong>。system prompt、消息摘要、检索增强 (RAG)、工具返回筛选……都是"上下文工程 (context engineering)" 的具体手段。</li>
+<li><strong>状态机语义</strong>。一次推理完成后，上下文窗口里的内容默认全丢（除非你自己存到外部）。</li>
+</ul>
+</section>
+
+<section id="applied-example">
+<h2>一个具体的应用场景</h2>
+<p>场景：让 Claude 总结一份 80 页 PDF 报告（约 35k tokens）。直接扔进去，模型回答时经常<strong>丢中间内容</strong>。</p>
+<p>解法：先做"层级摘要"——把 PDF 切块，每块先要 LLM 抽出 200 字的章节摘要，所有章节摘要加起来不到 5k token，然后再用 5k 摘要去回答原始问题。</p>
+<pre><code># 伪代码：层级摘要解法
+chunks = split_pdf(pdf, by='page', chunk_size=1000)   # ~35 chunks
+summaries = []
+for c in chunks:
+    s = llm.complete(
+        system="用 200 字总结这一段的关键词和结论",
+        user=c
+    )
+    summaries.append(s)
+
+# 把"信息密度高"的摘要塞回上下文
+final_answer = llm.complete(
+    system="基于以下章节摘要回答问题。",
+    user=f"问题：{question}\n\n章节摘要：\n" + "\n\n".join(summaries)
+)</code></pre>
+<p>塞进上下文的 token <strong>变少了</strong>（35k → 5k），但回答质量可能<strong>反而更好</strong>——因为模型现在看到的是"精炼版"，而不是 80 页噪音。这就是"上下文工程"的核心理念：模型好坏不在窗口大小，在窗口里装的是什么。</p>
+</section>
+
+<section id="boundaries">
+<h2>混淆与边界</h2>
+<ul>
+<li><strong>误解：上下文窗口 200k = 模型能精确用满 200k。</strong> 正解：超长上下文中模型对中后段细节的引用显著下降（"lost in the middle" 在 2023 的 "Lost in the Middle" 实验里被系统量化过）。窗口大 ≠ 记得全。</li>
+<li><strong>误解：清空对话 = 模型"失忆"。</strong> 正解：清空只清<em>当前会话的上下文</em>；真正的"记忆"看你怎么设计 system prompt + 外部长期存储。</li>
+<li><strong>误解：提示词 (prompt) ≠ 上下文。</strong> 正解：提示词<strong>是</strong>上下文的一部分；上下文还包括历史消息、工具返回、system 指令、检索片段等所有 token。</li>
+<li><strong>误解：长上下文是 RAG 的替代品。</strong> 正解：两者解决不同问题。RAG 把"找得到"的事情自动化，长上下文主要负责"装得下"。在生产里它们往往配合使用：先 RAG 召回 top-k（几千 token），再让模型基于这批摘要在长上下文里写答案。</li>
+</ul>
+</section>
+
+<section id="self-check">
+<h2>自检问题</h2>
+<ol>
+<li><strong>【复述】</strong>用一句话讲清楚"上下文窗口"和"对话历史"的区别？</li>
+<li><strong>【对比】</strong>长上下文 (long context) 和 RAG 都试图"让模型看到更多资料"，它们各自的代价是什么？</li>
+<li><strong>【应用】</strong>你最近做的一个 LLM 任务里，输入的 token 大概有多少？哪段最占空间？能不能砍掉？</li>
+<li><strong>【判断】</strong>什么时候应该<strong>压缩上下文</strong>（摘要 / 截断），什么时候应该<strong>扩大窗口</strong>？</li>
+<li><strong>【延伸】</strong>如果是 Agent，它的"短期舞台（context）"和"长期记忆"是怎么分界的？想想每次 loop 跑完后<em>哪些</em> token 应该被忘掉？</li>
+</ol>
+</section>
+
+<section id="references">
+<h2>参考资料</h2>
+<ol>
+<li>Liu et al., <em>Lost in the Middle: How Language Models Use Long Contexts</em>（2023，主来源）. <a href="https://arxiv.org/abs/2307.03172">https://arxiv.org/abs/2307.03172</a> — 量化了"窗口大不等于记得全"这一现象的原始论文。</li>
+<li>Anthropic Docs, <em>Prompt engineering overview</em>（补充来源，官方建议）. <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview">https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview</a> — 上下文结构、提示词放置、XML 标签组织等工程建议。</li>
+<li>OpenAI, <em>How to Use tiktoken and count tokens for OpenAI models</em>（补充来源）. <a href="https://github.com/openai/tiktoken">https://github.com/openai/tiktoken</a> — 实际计算 token 数的官方库，可在自己代码里直接调用。</li>
+<li>Anthropic News, <em>Effective context engineering for AI agents</em>（补充来源）. <a href="https://www.anthropic.com/news/context-engineering">https://www.anthropic.com/news/context-engineering</a> — 上下文工程（context engineering）的官方论述：为什么"装什么"比"装多大"重要。</li>
+</ol>
+<p class="muted">最后更新：2026-09-05 · 由 <code>concept-study</code> Skill 生成于 <code>.workbuddy/skills/concept-study/SKILL.md</code></p>
+
+</section>
+
+</body>
+</html>

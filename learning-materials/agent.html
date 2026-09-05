@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent（智能体）— 个人学习笔记</title>
+<style>
+* { box-sizing: border-box; }
+body { max-width: 760px; margin: 32px auto; padding: 0 24px; font: 16px/1.65 -apple-system, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif; color: #1f2328; background: #fff; }
+h1 { font-size: 1.9em; border-bottom: 2px solid #1f2328; padding-bottom: 8px; margin-bottom: 8px; }
+h2 { font-size: 1.35em; margin-top: 2em; padding-bottom: 4px; border-bottom: 1px solid #d0d7de; }
+h3 { font-size: 1.1em; margin-top: 1.5em; color: #1f2328; }
+p, li { color: #1f2328; }
+.meta { color: #57606a; font-size: 0.9em; margin: 6px 0 24px; }
+.meta span.tag { display: inline-block; background: #ddf4ff; color: #0969da; padding: 2px 10px; border-radius: 12px; font-size: 0.85em; margin-right: 4px; }
+.lede { font-size: 1.05em; background: #f6f8fa; padding: 14px 18px; border-left: 4px solid #0969da; border-radius: 4px; margin: 16px 0 24px; }
+code { background: #f6f8fa; padding: 2px 6px; border-radius: 4px; font-family: ui-monospace, Consolas, Menlo, monospace; font-size: 0.92em; }
+pre { background: #f6f8fa; padding: 14px 16px; border-radius: 6px; overflow-x: auto; border: 1px solid #d0d7de; }
+pre code { background: transparent; padding: 0; font-size: 0.85em; line-height: 1.5; display: block; }
+blockquote { border-left: 4px solid #d0d7de; padding: 0 14px; color: #57606a; margin: 14px 0; }
+ul, ol { padding-left: 1.4em; }
+li { margin: 5px 0; }
+table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 0.95em; }
+th, td { border: 1px solid #d0d7de; padding: 8px 10px; text-align: left; }
+th { background: #f6f8fa; }
+a { color: #0969da; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.muted { color: #57606a; font-size: 0.9em; }
+hr { border: 0; border-top: 1px solid #d0d7de; margin: 32px 0; }
+.nav { color: #57606a; font-size: 0.9em; margin-bottom: 16px; }
+.nav a { color: #57606a; }
+</style>
+</head>
+<body>
+
+<p class="nav">[<a href="index.html">返回索引</a>] · [<a href="concept-relationship.html">概念关系图</a>]</p>
+
+<h1>Agent（智能体）</h1>
+<div class="meta">
+<span class="tag">AI</span><span class="tag">agent</span><span class="tag">autonomy</span><span class="tag">tool-use</span>
+<br>日期：2026-09-05 · 深度：standard · 受众：自我学习者
+</div>
+
+<div class="lede">
+LLM Agent = 由大模型驱动、能<strong>自主循环</strong>地读信息 → 做决策 → 调用工具 → 看结果 → 再决策，直到完成目标或触发终止的程序。它和普通聊天机器人的核心差别不在"会不会调工具"，而在"下一步要不要再调、调用什么"由谁来决定——答案是 Agent 自己。
+</div>
+
+<section id="personal-explanation">
+<h2>个人理解</h2>
+<p>我自己在理解 Agent 时，最容易把它和"Chatbot + 一些插件"混淆。后来我是这样把 Agent "看穿"的：</p>
+<p>把它想成一个<strong>会自己拉清单的助手</strong>。用户说一句"帮我调研 GitHub 上最近 30 天最热的 5 个 AI Agent 仓库"，Agent 不会立刻返回一个答案——它会先在脑子里（其实在 system prompt + 任务描述里）拆出步骤：先搜索、再筛选、再读 README、再抽取要点、再写报告。每一步它都会停下来看结果，决定"够不够？要不要再来一次？"。</p>
+<p>这就是 Anthropic 团队在工程博客里反复强调的"agent loop"——一个非常朴素的循环：</p>
+<pre><code>while not done:
+    plan   = LLM(think_with_tools, current_state)
+    action = tool.execute(plan.next_step)
+    state  = state.update(action.result)
+    if state.satisfies_goal(): done = true</code></pre>
+<p>这段伪代码看着简单，但 Anthropic 自己说过："<em>most successful implementations weren't using complex frameworks or specialized libraries. Instead, they were building with simple, composable patterns.</em>"——厉害的 Agent 实现不是花哨框架，是这层朴素循环的仔细打磨。真正的难点在工具接口设计（tool ergonomics）和错误恢复，而不是 loop 本身。</p>
+</section>
+
+<section id="mechanics">
+<h2>核心机制</h2>
+<ul>
+<li><strong>由 LLM 拥有决策权</strong>：下一步做什么（调哪个工具、用什么参数、何时停）由 LLM 在循环里动态决定，不是写死代码编排。</li>
+<li><strong>闭环循环</strong>：感知（读系统/工具返回）→ 决策（LLM 推理）→ 行动（调工具）→ 观察（读结果）→ 再决策——这是一个不断自我修正的反馈环。</li>
+<li><strong>可调用工具</strong>：搜索、读文件、运行代码、发请求……这些工具是 Agent 的"手脚"。没有工具的 Agent 只是一个普通聊天机器人。</li>
+<li><strong>短期状态全装在上下文里</strong>：每一次循环 LLM 看到的输入（系统提示 + 历史消息 + 工具返回）就是 Agent 的全部短期记忆。上下文窗口爆了 = Agent 失忆。</li>
+<li><strong>必须有终止条件</strong>：要么任务完成，要么达到最大步数，要么置信度太低主动停下。无限循环会一直烧钱。</li>
+<li><strong>错误会累积</strong>：每一步若有偏差，偏差会沿着循环放大；所以生产环境的 Agent 必须有 guardrails（人审节点、沙盒、超时、回滚）。</li>
+</ul>
+</section>
+
+<section id="applied-example">
+<h2>一个具体的应用场景</h2>
+<p>场景：你让 Agent "把本仓库 README 和 CHANGELOG 翻译成英文，PR 到 main 分支"。Agent loop 跑起来是这样：</p>
+<ol>
+<li>先用 <code>read_file</code> 读 README.md 和 CHANGELOG.md，观察内容长度（>10k token 时可能要分块）。</li>
+<li>把"翻译目标 + 当前任务状态"塞进 LLM，让它列一个清单（拆 job）。</li>
+<li>对每个文件，<strong>循环</strong>：用 <code>translate_chunk</code> 翻译一段 → 用 <code>write_file</code> 写回 → 检查是否完整 → 进入下一段。</li>
+<li>遇到低级错误（如语法错误未通过 lint），<strong>回到循环开头</strong>自己修一次；超过两次就停下来把这段加入 <code>NEEDS_HUMAN_REVIEW</code> 列表。</li>
+<li>全部完成后调用 <code>git_add_commit_push</code>，并把 PR URL 报告给用户。</li>
+</ol>
+<p>整个过程用户只需要说一句话、最后收一个 URL。这件事如果用 Chatbot 实现，user 会写一段 200 字的 prompt 让 Chatbot <em>教</em> 自己做一遍——区别在于谁负责中间那十几步。</p>
+</section>
+
+<section id="boundaries">
+<h2>混淆与边界</h2>
+<ul>
+<li><strong>误解：Agent = Chatbot + 几个工具。</strong> 正解：关键是<strong>循环</strong>。Chatbot 不会"决定下一步要不要再调工具"；Agent 会。</li>
+<li><strong>误解：Agent 越"聪明"越好。</strong> 正解：<em>Anthropic 的明确建议是</em>"<em>find the simplest solution possible, and only increase complexity when needed</em>"——能写死 pipeline 的任务不要硬上 Agent，烧钱、慢、还会出怪错。</li>
+<li><strong>误解：长上下文窗口 = Agent 不会失忆。</strong> 正解：上下文窗口再大也不解决"哪些 token 才是当前最相关"——这靠 Skill、压缩、检索（RAG）等"上下文工程"解决，不是单靠窗口大。</li>
+<li><strong>误解：自主 Agent 没有 SOP 需求。</strong> 正解：Anthropic 在多 Agent 研究博客里特别指出："<em>Setting explicit guardrails to prevent the agents from spiraling out of control.</em>"——人审节点、终止条件、回滚剧本一样都不能少。</li>
+</ul>
+</section>
+
+<section id="self-check">
+<h2>自检问题</h2>
+<ol>
+<li><strong>【复述】</strong>用自己的话讲清楚 Agent 是什么、它和普通 Chatbot 差在哪一步？</li>
+<li><strong>【对比】</strong>Agent 和 Copilot、Workflow（固定管线）关键差别是什么？给出"该用 Agent 但不该用 Copilot"的一个场景。</li>
+<li><strong>【应用】</strong>你最近做的一个任务里哪一步最像 agent loop？请用 感知→决策→行动→观察 描述一遍。</li>
+<li><strong>【判断】</strong>什么样的任务<strong>不该</strong>升级成 Agent？（提示：可枚举、固定流程、几乎不出错的）</li>
+<li><strong>【延伸】</strong>Agent loop 跑到第 N 步，上下文已经装满了——你猜会有哪些常见解法？各自代价是什么？</li>
+</ol>
+</section>
+
+<section id="references">
+<h2>参考资料</h2>
+<ol>
+<li>Anthropic Research, <em>Building Effective Agents</em>（2024-12，主来源）. <a href="https://www.anthropic.com/research/building-effective-agents">https://www.anthropic.com/research/building-effective-agents</a> — 直接定义了 workflow vs agent 的区别、5 种工作流模式（prompt chaining / routing / parallelization / orchestrator-workers / evaluator-optimizer）、何时上 Agent 的判断标准。</li>
+<li>Anthropic Engineering, <em>How we built our multi-agent research system</em>（主来源，2025）. <a href="https://www.anthropic.com/engineering/multi-agent-research-system">https://www.anthropic.com/engineering/multi-agent-research-system</a> — 真实生产级多 Agent 系统的工程经验：扩展思维、并行工具调用、guardrails、评估方法。</li>
+<li>Anthropic, <em>Introducing Agent Skills</em>（补充来源）. <a href="https://www.anthropic.com/news/skills">https://www.anthropic.com/news/skills</a> — Agent 的能力扩展方式之一（Skill 是"教 Agent 怎么想"、Tool 是"让 Agent 能做什么"）。</li>
+<li>Wikipedia, <em>Intelligent agent</em>（补充来源）. <a href="https://en.wikipedia.org/wiki/Intelligent_agent">https://en.wikipedia.org/wiki/Intelligent_agent</a> — 经典 AI 教材式定义，区分 reactive / deliberative / hybrid agent。</li>
+</ol>
+<p class="muted">最后更新：2026-09-05 · 由 <code>concept-study</code> Skill 生成于 <code>.workbuddy/skills/concept-study/SKILL.md</code></p>
+
+</section>
+
+</body>
+</html>

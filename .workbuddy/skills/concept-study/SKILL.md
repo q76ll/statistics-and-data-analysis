@@ -1,94 +1,108 @@
 ---
 name: concept-study
-description: 此 Skill 在用户希望"学习/复习/讲清/梳理 一个或一组概念"时触发。典型触发语句包括："用 Skill 学习 X"、"帮我搞懂 X"、"把 X 讲明白"、"帮我整理 X 的学习笔记"、"复习 X" 等。Skill 会按统一的结构化模板（定义 / 为何重要 / 关键特征 / 与相近概念对比 / 实例 / 常见误解 / 自检问题 / 下一步）生成中文 Markdown 学习笔记，落到 notes/concepts/<slug>.md，并维护索引文件。适用于计算机、AI、数学、工程等领域概念的入门到进阶复习场景。
+description: 当用户希望"系统学习 / 复习 / 弄懂某个概念"时调用。典型触发语包括：用 concept-study 学习 X、我想搞懂 X、复习一下 X、用这个 Skill 给我讲清 X。它接收一个概念名（必要时辅以目标读者、深度、前置背景），按统一模板在仓库的 learning-materials/ 目录生成一份独立的 HTML 学习资料，并维护 index.html 索引。仅适用于"概念 / 知识点"类主题，不适用于工具使用、数据处理、项目实施。
 agent_created: true
 ---
 
-# Concept Study
+# Concept Study — 个人概念学习资料生成 Skill
 
-## Overview
+本 Skill 是本仓库的项目级 Skill，位于 `.workbuddy/skills/concept-study/SKILL.md`。它不为"一次性"服务——它的目标是把任意一个概念，用同一份结构、一套自检标准，沉淀为一份独立的、可重读、可对照、可索引的 HTML 学习资料。
 
-This skill enables structured concept learning. Given a concept name (and optionally context such as background or depth level), produce a Chinese Markdown learning note that moves the learner from confusion to "I can explain it in my own words and use it on a small problem".
+## 适用场景
 
-## When to use this skill
+| 应该调用 | 不应该调用 |
+|---|---|
+| "用 concept-study 学习 **贝叶斯定理**" | "怎么用 git rebase" —— 这是工具用法，不是概念 |
+| "复习一下 **Transformer 注意力机制**" | "帮我修这个 bug" —— 这是调试任务 |
+| "把 **CAP 定理** 给我讲清楚" | "做一份 PPT" —— 这是文件生成任务（用 pptx Skill） |
+| "用这个 Skill 学习 **缓存一致性**" | "给我一个 Python 速算脚本" —— 这是数据/计算任务 |
 
-Use this skill when:
+判断边界：**这个请求的本质是不是"理解一个概念"**。是 → 用本 Skill；否 → 用更合适的工具或 Skill。
 
-- The user asks to "learn / review / understand / explain / organize notes for" a specific concept.
-- The user gives a list of concepts (e.g. "study X, Y, Z") — handle each one in turn, then update the index.
-- The user asks for a "概念学习资料"、"学习笔记"、"概念卡" style deliverable.
+## 输入信息
 
-Do NOT use this skill when:
+执行 Skill 时收集以下字段：
 
-- The user wants ad-hoc Q&A about a concept (just answer in chat).
-- The task is to write runnable code, build a feature, or perform an action (use a different skill).
-- The user wants to translate or summarize an existing long document (that is summarization, not concept learning).
-
-## Workflow
-
-Follow these steps in order. Skip a step only when there is a clear reason.
-
-### Step 1 — Capture inputs
-
-Collect:
-
-- **Concept name(s):** the Chinese or English term(s) the user wants to learn. If the name is ambiguous (e.g. "Skill" can mean many things), briefly clarify or pick the most likely interpretation and note the assumption.
-- **Optional context:** the user's background, current course, depth level (intro / intermediate / advanced).
-- **Optional constraints:** output language (default Chinese), output path (default `<repo>/notes/concepts/<slug>.md`), whether to also update `notes/concepts/index.md`.
-
-If concept names are missing, ask. If context is missing, make reasonable defaults and proceed.
-
-### Step 2 — For each concept, generate a structured note
-
-Use the template in `references/concept_template.md`. Sections are mandatory unless the concept genuinely cannot fill them — in that case mark "N/A (原因)". Keep each section short (1–6 lines or 3–6 bullets). Total length ~ 300–700 words per concept.
-
-The skill is content-led, not form-led: prioritize faithful explanation over squeezing every section. If a section would be filler, drop it.
-
-Content quality rules:
-
-1. **Definition:** one sentence. No circular definition ("X is when you X").
-2. **Why it matters:** connect to something concrete the learner is doing or likely to face.
-3. **Key characteristics:** 3–5 bullet points — properties, typical magnitudes, conditions.
-4. **Comparison:** contrast with 1–3 similar concepts in a small table. This is where learners most often mix things up.
-5. **Concrete example:** one short scenario, ideally from the learner's domain if known. Avoid trivial `x = 1` toy examples.
-6. **Common misconceptions:** 2–4 misconceptions that real learners hold, with one-line corrections.
-7. **Self-check questions:** 3–5 questions ranging from recall to application. The learner should answer them out loud or in writing, not in their head.
-8. **Next steps:** 1–3 concrete next moves — read, do, or build something.
-
-### Step 3 — Write files
-
-For each concept:
-
-- Slug: convert Chinese to pinyin or English (e.g. "大模型的上下文" → `llm-context`; "Agent" → `agent`; "Skill" → `skill`). If multiple reasonable slugs exist, pick the shortest unambiguous one.
-- Path: `<repo>/notes/concepts/<slug>.md`.
-- Frontmatter: include `title`, `concept`, `date`, `tags` (top 3–5 keywords).
-
-Then update (or create) `<repo>/notes/concepts/index.md` with a table of all concepts seen in this batch:
-
-```
-| 概念 | slug | 一句话定义 | 标签 |
+| 字段 | 必填 | 默认值 | 说明 |
 |---|---|---|---|
-| Agent | `agent` | …… | AI, 自治 |
+| `concept` | 是 | — | 要学习的概念名，中文/英文均可。建议同时给中英文别名 |
+| `audience` | 否 | `self` | `self` / `junior` / `team-newbie` —— 决定术语密度与解释深度 |
+| `depth` | 否 | `standard` | `quick` (2-3 分钟速览) / `standard` (10-15 分钟) / `deep` (半小时以上含论文) |
+| `prior_context` | 否 | (空) | 学习者已知的前置概念，便于解释时省略已知 |
+
+如果用户没主动指定，按默认值运行；如有必要可在生成前用一次轻量确认。
+
+## 生成步骤（按顺序执行，每步都不能省）
+
+1. **澄清范围**：用一句话回答"这是关于什么的"。如果概念是缩写、有别名、是易混的多义词，先消歧。
+2. **写个人理解**：第一人称 / 教学口吻，200–400 字。**消化后用自己的话重写**，不要整段照搬维基百科或官方文档原文——这是本 Skill 最值钱的一节。
+3. **拆核心机制**：3–6 条**动词性**要点（"能 / 不能 / 总是 / 取决于 / 典型量级"开头），不是名词清单。
+4. **给一个具体应用场景**：来自学习者正在学的领域或真实工作，不要 `x = 1` 玩具例子。涉及代码则 ≤ 20 行最小可跑示例。
+5. **列混淆与边界**：2–4 条"易混 / 不适用"——每条都写"正解"。
+6. **出自检问题**：3–5 条，标注梯度（复述 / 对比 / 应用 / 判断 / 延伸）。
+7. **列参考资料**：2–6 条**可核查**链接，https:// 开头；分清"主来源"和"补充来源"。
+
+## 输出结构
+
+每个概念 → 一个 HTML 文件，必须包含以下章节（不允许少）：
+
+1. **Header**：标题、一句话定义、元数据（日期、tag、深度）
+2. **个人理解**（personal-explanation）
+3. **核心机制**（mechanics，3–6 条动词性要点）
+4. **应用场景**（applied-example，含一段代码或具体步骤）
+5. **混淆与边界**（boundaries，2–4 条）
+6. **自检问题**（self-check，3–5 条带梯度）
+7. **参考资料**（references，至少 2 条，全部可点开）
+
+文件输出路径：`learning-materials/<slug>.html`，其中 `<slug>` 由概念名转小写中划线（中文概念则用拼音或英文别名）。
+
+每次生成时：
+- 在 `learning-materials/index.html` 的表格里追加一行
+- 跨概念关系图 `learning-materials/concept-relationship.html` 与单篇独立生成；本 Skill 在积累了 2+ 概念后会提示是否更新关系图
+
+## 资料来源要求
+
+**严禁**：
+- 编造 URL、论文标题、作者、年份、API 参数
+- 把 AI 自己回答时引用的某段文字当作"参考资料"再引一次（自引用循环）
+- 引用看起来像官方但实际是拼接生成的链接
+
+**应当**：
+- 优先官方文档（anthropic.com / 官方 GitHub / Wikipedia / arXiv / 官方 RFC）
+- 引用具体段落（"§3.1" 优于"看那一节"）
+- 区分主来源（决定核心理解是否正确）与补充来源（仅作背景）
+- 短链 / 二次跳转的链接必须验证它确实指向原文
+
+## 自检要求（交付前 Skill 必须逐项打勾）
+
+- [ ] **个人理解**用的是自己的话，读起来像"我给朋友讲"，不是维基百科味
+- [ ] **核心机制**3–6 条都是动词开头
+- [ ] **应用场景**给得出具体例子，没有 `x = 1` 玩具例子
+- [ ] **混淆与边界**≥ 2 条，每条都有"正解"
+- [ ] **自检问题**≥ 3 条，覆盖 复述 / 对比 / 应用 三个层次
+- [ ] **参考资料**全部能点开（无 404、无自引用循环、无编造）
+- [ ] **HTML 文件**在浏览器中打开样式正常（CSS 无误、标签闭合）
+- [ ] **learning-materials/index.html** 已追加新一行
+
+任何一项缺失，先补完，再交付用户。
+
+## 与本 Skill 配套的文件约定
+
+```
+.workbuddy/skills/concept-study/SKILL.md             ← 本文件
+learning-materials/<concept-slug>.html               ← 每份概念学习资料
+learning-materials/concept-relationship.html         ← 跨概念关系图
+learning-materials/index.html                        ← 总索引
 ```
 
-### Step 4 — Hand off
+`index.html` 是一个静态 HTML 表格，由本 Skill 在每次新增时主动追加；如果用户希望 Skill 同时更新根 README 中的"已生成资料"列表，照办即可。
 
-After writing, tell the user:
+## 维护与迭代
 
-- The list of files created / updated (with absolute paths).
-- Whether the index was updated.
-- A short self-test suggestion (e.g. "回答 01-Agent.md 里的自检问题 1、3、5，30 分钟后合上文件复述").
+每次用户对结果给出反馈时，回看并决定：
+- "太抽象 / 看不懂" → 在个人理解增加类比；降低术语密度
+- "太啰嗦 / 教科书味" → 重写个人理解一节；合并要点
+- "参考资料打不开" → 立即替换为可核查的 URL
+- "对比表不够" → 把混淆与边界从 bullets 升级为对照表
 
-## Resources
-
-### references/concept_template.md
-
-Full Markdown template for the per-concept note. Load it before generating each note; do not invent a new structure.
-
-## Style
-
-- Language: Simplified Chinese by default; English technical terms stay English (e.g. token, context window, agent loop).
-- Tone: 像一个耐心的高级同学在讲题，不要居高临下，但也不要卖萌。
-- No emojis unless the user uses them first.
-- Citations: do not invent page numbers or paper titles. If the user needs them, ask.
-- Code blocks: only when a 5-line snippet genuinely helps; otherwise prefer prose.
+每一次迭代都是对 Skill 自身的修订——把"什么样的概念学习资料最有用"经验沉淀到本 SKILL.md 中。

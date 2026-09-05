@@ -30,3 +30,19 @@ Desktop.ini
 
 # Logs
 *.log
+
+# Secrets / credentials / local env (do NOT commit)
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.pfx
+credentials.json
+credentials.yaml
+credentials.yml
+secrets.*
+gcp-credentials.json
+service-account*.json
+*.keystore
+.ipynb_checkpoints/profile
